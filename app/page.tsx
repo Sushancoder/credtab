@@ -1,65 +1,138 @@
-import Image from "next/image";
+"use client"
 
-export default function Home() {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+import { useState, useEffect, useMemo } from 'react'
+import Link from 'next/link'
+import { Plus, UserRound } from 'lucide-react'
+import { getContacts } from '@/lib/contacts'
+import type { Contact } from '@/lib/types'
+import ContactCard from '@/components/ContactCard'
+import AddContactSheet from '@/components/AddContactSheet'
+
+export default function HomePage() {
+    const [contacts, setContacts] = useState<Contact[]>([])
+    const [loading, setLoading] = useState(true)
+    const [activeTab, setActiveTab] = useState<'customer' | 'supplier'>('customer')
+    const [search, setSearch] = useState('')
+    const [sheetOpen, setSheetOpen] = useState(false)
+
+    // Fetch all contacts on mount
+    useEffect(() => {
+        async function load() {
+            const data = await getContacts()
+            setContacts(data)
+            setLoading(false)
+        }
+        load()
+    }, [])
+
+    // Filter by active tab first, then by search query
+    const filtered = useMemo(() => {
+        return contacts
+            .filter((c) => c.type === activeTab)
+            .filter((c) => c.name.toLowerCase().includes(search.toLowerCase().trim()))
+    }, [contacts, activeTab, search])
+
+    // Called by AddContactSheet after a successful insert
+    function handleContactAdded(newContact: Contact) {
+        setContacts((prev) => [newContact, ...prev])
+    }
+
+    return (
+        <div className="min-h-screen bg-background flex flex-col max-w-lg mx-auto relative">
+
+            {/* Header */}
+            <header className="flex items-center justify-between px-4 py-3 border-b border-border sticky top-0 bg-background z-10">
+                <h1 className="text-lg font-semibold tracking-tight">CredTab</h1>
+                <Link
+                    href="/profile"
+                    className="w-8 h-8 rounded-full bg-muted flex items-center justify-center hover:bg-muted/80 transition-colors"
+                    aria-label="Profile"
+                >
+                    <UserRound className="w-4 h-4 text-muted-foreground" />
+                </Link>
+            </header>
+
+            {/* Tabs */}
+            <div className="flex border-b border-border px-4 sticky top-[53px] bg-background z-10">
+                {(['customer', 'supplier'] as const).map((tab) => (
+                    <button
+                        key={tab}
+                        onClick={() => { setActiveTab(tab); setSearch('') }}
+                        className={`flex-1 py-3 text-sm font-medium border-b-2 capitalize transition-colors ${activeTab === tab
+                            ? 'border-primary text-foreground'
+                            : 'border-transparent text-muted-foreground hover:text-foreground'
+                            }`}
+                    >
+                        {tab === 'customer' ? 'Customers' : 'Suppliers'}
+                    </button>
+                ))}
+            </div>
+
+            {/* Search */}
+            <div className="px-4 py-3">
+                <input
+                    type="text"
+                    placeholder={`Search ${activeTab === 'customer' ? 'customers' : 'suppliers'}...`}
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="w-full px-3 py-2 text-sm rounded-lg bg-muted outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring/50 transition-shadow"
+                />
+            </div>
+
+            {/* Contact List */}
+            <div className="flex-1 divide-y divide-border pb-24">
+                {loading ? (
+                    // Skeleton rows while loading
+                    Array.from({ length: 6 }).map((_, i) => (
+                        <div key={i} className="flex items-center gap-3 px-4 py-3 animate-pulse">
+                            <div className="w-11 h-11 rounded-full bg-muted shrink-0" />
+                            <div className="flex-1">
+                                <div className="h-4 bg-muted rounded w-36" />
+                            </div>
+                            <div className="space-y-2 text-right">
+                                <div className="h-4 bg-muted rounded w-16" />
+                                <div className="h-3 bg-muted rounded w-12 ml-auto" />
+                            </div>
+                        </div>
+                    ))
+                ) : filtered.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-24 text-center px-8">
+                        <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+                            <UserRound className="w-7 h-7 text-muted-foreground" />
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                            {search
+                                ? `No results for "${search}"`
+                                : `No ${activeTab === 'customer' ? 'customers' : 'suppliers'} yet.\nTap + to add one.`}
+                        </p>
+                    </div>
+                ) : (
+                    filtered.map((contact) => (
+                        <ContactCard key={contact.id} contact={contact} />
+                    ))
+                )}
+            </div>
+
+            {/* Floating Action Button */}
+            <button
+                id="add-contact-fab"
+                onClick={() => setSheetOpen(true)}
+                className="fixed bottom-6 right-6 h-12 px-5 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center gap-2 hover:opacity-90 active:scale-95 transition-all"
+                aria-label="Add contact"
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+                <Plus className="w-5 h-5" />
+                <span className="text-sm font-medium">
+                    {activeTab === 'customer' ? 'Add Customer' : 'Add Supplier'}
+                </span>
+            </button>
+
+            {/* Add Contact Sheet */}
+            <AddContactSheet
+                open={sheetOpen}
+                onOpenChange={setSheetOpen}
+                defaultType={activeTab}
+                onSuccess={handleContactAdded}
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
         </div>
-      </main>
-    </div>
-  );
+    )
 }
