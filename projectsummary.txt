@@ -1,0 +1,153 @@
+Project Summary
+
+This project is a personal-use/with friends digital ledger web application inspired by apps like OkCredit, but built for individual use and fully free. The goal is to replace traditional “udhar/bahi khata” paper tracking with a simple, fast, and minimal web-based solution.
+
+The system allows a single authenticated user to manage credit and payment records for contacts (customers or suppliers), track balances, and view financial summaries. It prioritizes simplicity, speed, and correctness over feature bloat.
+
+Core Objectives
+
+Build a clean digital ledger for personal use/with friends.
+
+Track credit and payment transactions per contact.
+
+Automatically calculate running balances.
+
+Provide summaries such as total receivable, payable, and net position.
+
+Keep architecture minimal and maintainable.
+
+Ensure financial precision and data integrity.
+
+Tech Stack
+
+Frontend: Next.js (App Router)
+
+Backend: Supabase
+
+PostgreSQL database
+
+Supabase Auth
+
+Row Level Security (RLS)
+
+Styling: Tailwind CSS
+
+Optional state management: Lightweight client-side store (e.g., Zustand)
+
+Data Model
+Contacts
+
+Represents people or entities involved in transactions.
+
+Fields:
+
+id
+
+user_id (owner)
+
+name
+
+phone (optional)
+
+type (customer | supplier)
+
+created_at
+
+Transactions
+
+Represents individual credit or payment entries.
+
+Fields:
+
+id
+
+user_id
+
+contact_id
+
+amount (stored as numeric(12,2) or integer in smallest currency unit)
+
+note
+
+created_at
+
+soft_delete flag (optional)
+
+Amounts:
+
+Positive values represent credit given.
+
+Negative values represent payments received.
+
+Key Functionalities
+
+Add, edit, and soft-delete contacts.
+
+Add credit or payment transactions.
+
+Auto-calculate balance per contact.
+
+Dashboard showing:
+
+Total receivable
+
+Total payable
+
+Net balance
+
+Filter transactions by date or contact.
+
+Export data (CSV/PDF) for backup.
+
+PWA-ready for mobile usage.
+
+Technical Principles
+
+Use precise numeric types for financial values (no floating point).
+
+Add indexes on frequently queried fields:
+
+user_id
+
+contact_id
+
+created_at
+
+Prevent hard deletion of financial records.
+
+Design schema for long-term scalability.
+
+Optimize for fast manual entry and keyboard-first UX.
+
+Scope
+
+This is a single-user ledger system.
+Not included (for now):
+
+Multi-user collaboration
+
+Inventory management
+
+GST/tax modules
+
+Complex accounting rules
+
+Long-Term Possibilities
+
+AI-generated monthly summaries
+
+Voice-to-transaction input
+
+Smart reminders
+
+Anomaly detection in payment behavior
+
+Conversion to mobile app via PWA or native wrapper
+
+Philosophy
+
+Minimal.
+Fast.
+Correct.
+No unnecessary complexity.
+Built for real daily use, not feature marketing.
