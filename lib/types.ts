@@ -12,3 +12,17 @@ export type NewContact = {
     phone?: string
     type: 'customer' | 'supplier'
 }
+
+export type Transaction = {
+    id: string
+    contact_id: string
+    amount: number       // positive = You Gave, negative = You Got
+    note: string | null
+    created_at: string
+}
+
+export type NewTransaction = {
+    contact_id: string
+    amount: number
+    note?: string
+}
