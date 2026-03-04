@@ -61,3 +61,40 @@ export async function addContact(data: NewContact) {
 
     return { contact, error }
 }
+
+/**
+ * Soft-delete a contact by setting is_deleted = true.
+ */
+export async function deleteContact(contactId: string) {
+    const supabase = createClient()
+
+    const { error } = await supabase
+        .from('contacts')
+        .update({ is_deleted: true })
+        .eq('id', contactId)
+
+    return { error }
+}
+
+/**
+ * Update a contact's name, phone, and/or type.
+ */
+export async function updateContact(
+    contactId: string,
+    data: { name: string; phone?: string; type: 'customer' | 'supplier' }
+) {
+    const supabase = createClient()
+
+    const { data: contact, error } = await supabase
+        .from('contacts')
+        .update({
+            name: data.name.trim(),
+            phone: data.phone?.trim() || null,
+            type: data.type,
+        })
+        .eq('id', contactId)
+        .select('id, name, phone, type, created_at')
+        .single()
+
+    return { contact, error }
+}

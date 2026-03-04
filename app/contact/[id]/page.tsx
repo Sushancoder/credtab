@@ -2,12 +2,44 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, MoreVertical, Eye, Pencil, Trash2, User, Phone, Tag, Calendar } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { getTransactions } from '@/lib/transactions'
-import type { Transaction } from '@/lib/types'
+import { deleteContact, updateContact } from '@/lib/contacts'
+import type { Contact, Transaction } from '@/lib/types'
 import TransactionBubble from '@/components/TransactionBubble'
 import TransactionSheet from '@/components/TransactionSheet'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetFooter,
+} from '@/components/ui/sheet'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
 
 // Format number as ₹ INR
 function formatINR(amount: number): string {
@@ -45,11 +77,7 @@ function groupByDate(transactions: Transaction[]) {
   return groups
 }
 
-type ContactInfo = {
-  id: string
-  name: string
-  type: 'customer' | 'supplier'
-}
+type ContactInfo = Omit<Contact, 'balance'>
 
 export default function ContactDetailPage() {
   const params = useParams<{ id: string }>()
@@ -59,33 +87,64 @@ export default function ContactDetailPage() {
   const [contact, setContact] = useState<ContactInfo | null>(null)
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [loading, setLoading] = useState(true)
+  const [fetchError, setFetchError] = useState(false)
 
-  // Sheet state
+  // Sheet state (transaction)
   const [sheetOpen, setSheetOpen] = useState(false)
   const [sheetMode, setSheetMode] = useState<'add' | 'edit'>('add')
   const [sheetType, setSheetType] = useState<'gave' | 'got'>('gave')
   const [editingTxn, setEditingTxn] = useState<Transaction | null>(null)
 
-  // Fetch contact info + transactions on mount
-  useEffect(() => {
-    async function load() {
+  // 3-dot menu states
+  const [infoOpen, setInfoOpen] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  // Edit form state
+  const [editName, setEditName] = useState('')
+  const [editPhone, setEditPhone] = useState('')
+  const [editType, setEditType] = useState<'customer' | 'supplier'>('customer')
+  const [editLoading, setEditLoading] = useState(false)
+  const [editError, setEditError] = useState('')
+
+  // Fetch contact info + transactions
+  async function loadContact() {
+    setLoading(true)
+    setFetchError(false)
+
+    try {
       const supabase = createClient()
 
       // Fetch contact details
-      const { data: contactData } = await supabase
+      const { data: contactData, error } = await supabase
         .from('contacts')
-        .select('id, name, type')
+        .select('id, name, phone, type, created_at')
         .eq('id', params.id)
         .single()
+
+      if (error) {
+        setFetchError(true)
+        setLoading(false)
+        return
+      }
 
       if (contactData) setContact(contactData)
 
       // Fetch transactions
       const txns = await getTransactions(params.id)
       setTransactions(txns)
+    } catch {
+      setFetchError(true)
+    } finally {
       setLoading(false)
     }
-    load()
+  }
+
+  // Load on mount
+  useEffect(() => {
+    loadContact()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.id])
 
   // Scroll to bottom when transactions load or new one added
@@ -132,6 +191,59 @@ export default function ContactDetailPage() {
     setTransactions((prev) => prev.filter((t) => t.id !== id))
   }
 
+  // -- Contact Menu Actions --
+
+  function openEditContact() {
+    if (!contact) return
+    setEditName(contact.name)
+    setEditPhone(contact.phone || '')
+    setEditType(contact.type)
+    setEditError('')
+    setEditOpen(true)
+  }
+
+  async function handleEditSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!contact) return
+    if (!editName.trim()) {
+      setEditError('Name is required.')
+      return
+    }
+
+    setEditLoading(true)
+    setEditError('')
+
+    const { contact: updated, error } = await updateContact(contact.id, {
+      name: editName.trim(),
+      phone: editPhone.trim() || undefined,
+      type: editType,
+    })
+
+    if (error || !updated) {
+      setEditError('Failed to update contact.')
+      setEditLoading(false)
+      return
+    }
+
+    setContact({ ...contact, name: updated.name, phone: updated.phone, type: updated.type })
+    setEditOpen(false)
+    setEditLoading(false)
+  }
+
+  async function handleDeleteContact() {
+    if (!contact) return
+    setDeleting(true)
+
+    const { error } = await deleteContact(contact.id)
+
+    if (error) {
+      setDeleting(false)
+      return
+    }
+
+    router.push('/')
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex flex-col max-w-lg mx-auto">
@@ -142,6 +254,26 @@ export default function ContactDetailPage() {
         <div className="flex-1 flex items-center justify-center">
           <div className="text-sm text-muted-foreground">Loading...</div>
         </div>
+      </div>
+    )
+  }
+
+  if (fetchError) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center max-w-lg mx-auto gap-2">
+        <p className="text-sm text-muted-foreground">Something went wrong.</p>
+        <button
+          onClick={loadContact}
+          className="text-sm text-primary underline"
+        >
+          Retry
+        </button>
+        <button
+          onClick={() => router.push('/')}
+          className="text-sm text-muted-foreground underline"
+        >
+          Go back
+        </button>
       </div>
     )
   }
@@ -176,18 +308,46 @@ export default function ContactDetailPage() {
           <div className="flex-1 min-w-0">
             <h1 className="text-base font-semibold truncate">{contact.name}</h1>
           </div>
+
+          {/* 3-dot menu */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className="w-8 h-8 rounded-full hover:bg-muted flex items-center justify-center transition-colors shrink-0"
+                aria-label="More options"
+              >
+                <MoreVertical className="w-4 h-4" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44">
+              <DropdownMenuItem onClick={() => setInfoOpen(true)}>
+                <Eye className="w-4 h-4 mr-2" />
+                View Info
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={openEditContact}>
+                <Pencil className="w-4 h-4 mr-2" />
+                Edit Contact
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => setDeleteOpen(true)}
+                className="text-rose-500 focus:text-rose-500"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete Contact
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         {/* Balance summary */}
         <div className="ml-11 mt-1">
           <span
-            className={`text-sm font-semibold ${
-              balance > 0
+            className={`text-sm font-semibold ${balance > 0
+              ? 'text-emerald-600'
+              : balance < 0
                 ? 'text-rose-500'
-                : balance < 0
-                  ? 'text-emerald-600'
-                  : 'text-muted-foreground'
-            }`}
+                : 'text-muted-foreground'
+              }`}
           >
             {balance === 0 ? 'Settled up' : formatINR(balance)}
           </span>
@@ -204,7 +364,7 @@ export default function ContactDetailPage() {
         {transactions.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 text-center px-8">
             <p className="text-sm text-muted-foreground">
-              No transactions yet.{'\n'}Tap the buttons below to record one.
+              No transactions yet.<br />Tap the buttons below to record one.
             </p>
           </div>
         ) : (
@@ -231,20 +391,22 @@ export default function ContactDetailPage() {
       </div>
 
       {/* Bottom Action Bar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border px-4 py-3 z-10">
-        <div className="flex gap-3 max-w-lg mx-auto">
-          <button
-            onClick={() => openAddSheet('gave')}
-            className="flex-1 py-3 rounded-xl bg-rose-500 text-white font-medium text-sm hover:bg-rose-600 active:scale-[0.98] transition-all"
-          >
-            YOU GAVE
-          </button>
-          <button
-            onClick={() => openAddSheet('got')}
-            className="flex-1 py-3 rounded-xl bg-emerald-500 text-white font-medium text-sm hover:bg-emerald-600 active:scale-[0.98] transition-all"
-          >
-            YOU GOT
-          </button>
+      <div className="fixed bottom-0 left-0 right-0 z-10 flex justify-center">
+        <div className="w-full max-w-lg bg-background border-t border-border px-4 py-3">
+          <div className="flex gap-3">
+            <button
+              onClick={() => openAddSheet('gave')}
+              className="flex-1 py-3 rounded-xl bg-rose-500 text-white font-medium text-sm hover:bg-rose-600 active:scale-[0.98] transition-all"
+            >
+              YOU GAVE
+            </button>
+            <button
+              onClick={() => openAddSheet('got')}
+              className="flex-1 py-3 rounded-xl bg-emerald-500 text-white font-medium text-sm hover:bg-emerald-600 active:scale-[0.98] transition-all"
+            >
+              YOU GOT
+            </button>
+          </div>
         </div>
       </div>
 
@@ -276,6 +438,158 @@ export default function ContactDetailPage() {
           />
         ) : null
       )}
+
+      {/* View Info Dialog */}
+      <Dialog open={infoOpen} onOpenChange={setInfoOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Contact Info</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                <User className="w-4 h-4 text-primary" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Name</p>
+                <p className="text-sm font-medium">{contact.name}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                <Phone className="w-4 h-4 text-primary" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Phone</p>
+                <p className="text-sm font-medium">{contact.phone || 'Not added'}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                <Tag className="w-4 h-4 text-primary" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Type</p>
+                <p className="text-sm font-medium capitalize">{contact.type}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                <Calendar className="w-4 h-4 text-primary" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Added on</p>
+                <p className="text-sm font-medium">
+                  {new Date(contact.created_at).toLocaleDateString('en-IN', {
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric',
+                  })}
+                </p>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Contact Sheet */}
+      <Sheet open={editOpen} onOpenChange={setEditOpen}>
+        <SheetContent side="bottom" className="rounded-t-2xl pb-8">
+          <SheetHeader className="px-4 pt-2 pb-0">
+            <SheetTitle>Edit Contact</SheetTitle>
+          </SheetHeader>
+
+          <form onSubmit={handleEditSubmit} className="px-4 pt-4 space-y-4">
+            {/* Name */}
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium" htmlFor="edit-contact-name">
+                Name <span className="text-rose-500">*</span>
+              </label>
+              <Input
+                id="edit-contact-name"
+                placeholder="e.g. Ramesh Kumar"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                autoFocus
+                autoComplete="off"
+              />
+            </div>
+
+            {/* Phone */}
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium" htmlFor="edit-contact-phone">
+                Phone <span className="text-muted-foreground font-normal">(optional)</span>
+              </label>
+              <Input
+                id="edit-contact-phone"
+                placeholder="e.g. 9876543210"
+                type="tel"
+                value={editPhone}
+                onChange={(e) => setEditPhone(e.target.value)}
+                autoComplete="off"
+              />
+            </div>
+
+            {/* Error */}
+            {editError && <p className="text-sm text-rose-500">{editError}</p>}
+
+            {/* Type Toggle */}
+            <div className="pt-2">
+              <p className="text-sm font-medium mb-2">Type</p>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditType('customer')}
+                  className={`py-2 rounded-lg text-sm font-medium border transition-colors ${editType === 'customer'
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-background text-foreground border-border hover:bg-muted'
+                    }`}
+                >
+                  Customer
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditType('supplier')}
+                  className={`py-2 rounded-lg text-sm font-medium border transition-colors ${editType === 'supplier'
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-background text-foreground border-border hover:bg-muted'
+                    }`}
+                >
+                  Supplier
+                </button>
+              </div>
+            </div>
+
+            <SheetFooter className="px-0 pb-0 pt-2">
+              <Button type="submit" className="w-full" disabled={editLoading}>
+                {editLoading ? 'Saving...' : 'Update Contact'}
+              </Button>
+            </SheetFooter>
+          </form>
+        </SheetContent>
+      </Sheet>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete &ldquo;{contact.name}&rdquo;?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove the contact and hide all associated transactions. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteContact}
+              disabled={deleting}
+              className="bg-rose-500 hover:bg-rose-600 text-white"
+            >
+              {deleting ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
