@@ -19,6 +19,7 @@ export type Transaction = {
     amount: number       // positive = You Gave, negative = You Got
     note: string | null
     created_at: string
+    is_deleted: boolean
 }
 
 export type NewTransaction = {

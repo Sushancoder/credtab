@@ -75,7 +75,7 @@ export default function ContactCard({ contact }: Props) {
                     {isZero ? '₹0' : formatINR(balance)}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                    {isPositive ? 'You lent' : isNegative ? 'You owe' : 'Settled'}
+                    {isPositive ? 'Advance' : isNegative ? 'Due' : 'Settled'}
                 </p>
             </div>
         </Link>

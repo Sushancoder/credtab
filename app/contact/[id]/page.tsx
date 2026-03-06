@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, MoreVertical, Eye, Pencil, Trash2, User, Phone, Tag, Calendar } from 'lucide-react'
+import { ArrowLeft, MoreVertical, Eye, Pencil, Trash2, User, Phone, Tag, Calendar, ArrowDown, ArrowUp } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { getTransactions } from '@/lib/transactions'
 import { deleteContact, updateContact } from '@/lib/contacts'
@@ -156,7 +156,16 @@ export default function ContactDetailPage() {
 
   // Calculate balance from loaded transactions
   const balance = useMemo(() => {
-    return transactions.reduce((sum, t) => sum + t.amount, 0)
+    return transactions.reduce((sum, t) => t.is_deleted ? sum : sum + t.amount, 0)
+  }, [transactions])
+
+  // Pair each transaction with its cumulative running balance (deleted txns don't move the needle)
+  const transactionsWithBalance = useMemo(() => {
+    let running = 0
+    return transactions.map((t) => {
+      if (!t.is_deleted) running += t.amount
+      return { transaction: t, runningBalance: running }
+    })
   }, [transactions])
 
   // Group transactions by date for display
@@ -188,7 +197,9 @@ export default function ContactDetailPage() {
   }
 
   function handleDeleted(id: string) {
-    setTransactions((prev) => prev.filter((t) => t.id !== id))
+    setTransactions((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, is_deleted: true } : t))
+    )
   }
 
   // -- Contact Menu Actions --
@@ -353,7 +364,7 @@ export default function ContactDetailPage() {
           </span>
           {balance !== 0 && (
             <span className="text-xs text-muted-foreground ml-1.5">
-              {balance > 0 ? 'You will get' : 'You will give'}
+              {balance > 0 ? 'Advance' : 'Due'}
             </span>
           )}
         </div>
@@ -378,13 +389,17 @@ export default function ContactDetailPage() {
               </div>
 
               {/* Bubbles */}
-              {group.items.map((txn) => (
-                <TransactionBubble
-                  key={txn.id}
-                  transaction={txn}
-                  onEdit={openEditSheet}
-                />
-              ))}
+              {group.items.map((txn) => {
+                const entry = transactionsWithBalance.find((e) => e.transaction.id === txn.id)
+                return (
+                  <TransactionBubble
+                    key={txn.id}
+                    transaction={txn}
+                    onEdit={openEditSheet}
+                    runningBalance={entry?.runningBalance ?? 0}
+                  />
+                )
+              })}
             </div>
           ))
         )}
@@ -395,16 +410,18 @@ export default function ContactDetailPage() {
         <div className="w-full max-w-lg bg-background border-t border-border px-4 py-3">
           <div className="flex gap-3">
             <button
-              onClick={() => openAddSheet('gave')}
-              className="flex-1 py-3 rounded-xl bg-rose-500 text-white font-medium text-sm hover:bg-rose-600 active:scale-[0.98] transition-all"
+              onClick={() => openAddSheet('got')}
+              className="flex-1 py-3 rounded-xl bg-emerald-500 text-white font-medium text-sm hover:bg-emerald-600 active:scale-[0.98] transition-all flex items-center justify-center gap-1.5"
             >
-              YOU GAVE
+              <ArrowDown className="w-4 h-4" />
+              Received
             </button>
             <button
-              onClick={() => openAddSheet('got')}
-              className="flex-1 py-3 rounded-xl bg-emerald-500 text-white font-medium text-sm hover:bg-emerald-600 active:scale-[0.98] transition-all"
+              onClick={() => openAddSheet('gave')}
+              className="flex-1 py-3 rounded-xl bg-rose-500 text-white font-medium text-sm hover:bg-rose-600 active:scale-[0.98] transition-all flex items-center justify-center gap-1.5"
             >
-              YOU GOT
+              <ArrowUp className="w-4 h-4" />
+              Given
             </button>
           </div>
         </div>

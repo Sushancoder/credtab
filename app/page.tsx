@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
-import { Plus, UserRound } from 'lucide-react'
+import { Plus, UserRound, ChevronRight } from 'lucide-react'
 import { getContacts } from '@/lib/contacts'
 import type { Contact } from '@/lib/types'
 import ContactCard from '@/components/ContactCard'
@@ -25,12 +25,20 @@ export default function HomePage() {
         load()
     }, [])
 
+    // All contacts in the active tab (unfiltered by search)
+    const tabContacts = useMemo(() => {
+        return contacts.filter((c) => c.type === activeTab)
+    }, [contacts, activeTab])
+
+    // Net balance across all contacts in the active tab
+    const netBalance = useMemo(() => {
+        return tabContacts.reduce((sum, c) => sum + c.balance, 0)
+    }, [tabContacts])
+
     // Filter by active tab first, then by search query
     const filtered = useMemo(() => {
-        return contacts
-            .filter((c) => c.type === activeTab)
-            .filter((c) => c.name.toLowerCase().includes(search.toLowerCase().trim()))
-    }, [contacts, activeTab, search])
+        return tabContacts.filter((c) => c.name.toLowerCase().includes(search.toLowerCase().trim()))
+    }, [tabContacts, search])
 
     // Called by AddContactSheet after a successful insert
     function handleContactAdded(newContact: Contact) {
@@ -67,6 +75,46 @@ export default function HomePage() {
                     </button>
                 ))}
             </div>
+
+            {/* Net Balance Card */}
+            {!loading && tabContacts.length > 0 && (
+                <div className="mx-4 mt-3 mb-1 px-4 py-3 rounded-xl bg-muted/60 border border-border flex items-center justify-between">
+                    <div className="flex flex-col gap-0.5">
+                        <span className="text-sm font-semibold text-foreground">Net Balance</span>
+                        <span className="text-xs text-muted-foreground">
+                            <UserRound className="inline w-3 h-3 mr-1 -mt-0.5" />
+                            {tabContacts.length} {tabContacts.length === 1 ? 'Account' : 'Accounts'}
+                        </span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                        <div className="text-right">
+                            <p
+                                className={`text-sm font-bold ${netBalance > 0
+                                        ? 'text-emerald-600'
+                                        : netBalance < 0
+                                            ? 'text-rose-500'
+                                            : 'text-muted-foreground'
+                                    }`}
+                            >
+                                {netBalance === 0
+                                    ? '₹0'
+                                    : new Intl.NumberFormat('en-IN', {
+                                        style: 'currency',
+                                        currency: 'INR',
+                                        maximumFractionDigits: 0,
+                                    }).format(Math.abs(netBalance))}
+                            </p>
+                            {netBalance !== 0 && (
+                                <p className={`text-xs ${netBalance > 0 ? 'text-emerald-600' : 'text-rose-500'
+                                    }`}>
+                                    {netBalance > 0 ? 'You Get' : 'You Give'}
+                                </p>
+                            )}
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+                    </div>
+                </div>
+            )}
 
             {/* Search */}
             <div className="px-4 py-3">
