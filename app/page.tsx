@@ -50,7 +50,10 @@ export default function HomePage() {
 
             {/* Header */}
             <header className="flex items-center justify-between px-4 py-3 border-b border-border sticky top-0 bg-background z-10">
-                <h1 className="text-lg font-semibold tracking-tight">CredTab</h1>
+                <div className="flex items-center gap-2">
+                    <img src="/logo.svg" alt="CredTab Logo" className="w-6 h-6" />
+                    <h1 className="text-lg font-semibold tracking-tight">CredTab</h1>
+                </div>
                 <Link
                     href="/profile"
                     className="w-8 h-8 rounded-full bg-muted flex items-center justify-center hover:bg-muted/80 transition-colors"
@@ -90,10 +93,10 @@ export default function HomePage() {
                         <div className="text-right">
                             <p
                                 className={`text-sm font-bold ${netBalance > 0
-                                        ? 'text-emerald-600'
-                                        : netBalance < 0
-                                            ? 'text-rose-500'
-                                            : 'text-muted-foreground'
+                                    ? 'text-emerald-600'
+                                    : netBalance < 0
+                                        ? 'text-rose-500'
+                                        : 'text-muted-foreground'
                                     }`}
                             >
                                 {netBalance === 0

@@ -19,8 +19,8 @@ export default function LoginPage() {
 
                 {/* Logo + Title */}
                 <div className="text-center space-y-2">
-                    <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primary mb-2">
-                        <span className="text-primary-foreground font-bold text-2xl">C</span>
+                    <div className="inline-flex items-center justify-center mb-2">
+                        <img src="/logo.svg" alt="CredTab Logo" className="w-16 h-16 drop-shadow-sm" />
                     </div>
                     <h1 className="text-2xl font-semibold tracking-tight">CredTab</h1>
                     <p className="text-sm text-muted-foreground">
