@@ -2,13 +2,16 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
-import { Plus, UserRound, ChevronRight } from 'lucide-react'
+import Image from 'next/image'
+import { useRouter } from 'next/navigation'
+import { Plus, UserRound, ChevronRight, ScanText } from 'lucide-react'
 import { getContacts } from '@/lib/contacts'
 import type { Contact } from '@/lib/types'
 import ContactCard from '@/components/ContactCard'
 import AddContactSheet from '@/components/AddContactSheet'
 
 export default function HomePage() {
+    const router = useRouter()
     const [contacts, setContacts] = useState<Contact[]>([])
     const [loading, setLoading] = useState(true)
     const [activeTab, setActiveTab] = useState<'customer' | 'supplier'>('customer')
@@ -51,7 +54,7 @@ export default function HomePage() {
             {/* Header */}
             <header className="flex items-center justify-between px-4 py-3 border-b border-border sticky top-0 bg-background z-10">
                 <div className="flex items-center gap-2">
-                    <img src="/logo.svg" alt="CredTab Logo" className="w-6 h-6" />
+                    <Image src="/logo.svg" alt="CredTab Logo" width={24} height={24} priority />
                     <h1 className="text-lg font-semibold tracking-tight">CredTab</h1>
                 </div>
                 <Link
@@ -162,6 +165,19 @@ export default function HomePage() {
                         <ContactCard key={contact.id} contact={contact} />
                     ))
                 )}
+            </div>
+
+            {/* Left floating icon bar */}
+            <div className="fixed left-6 bottom-6 flex flex-col gap-2 z-20">
+                <button
+                    id="import-ledger-fab"
+                    onClick={() => router.push('/import')}
+                    className="w-12 h-12 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:opacity-90 active:scale-95 transition-all"
+                    aria-label="Import from ledger"
+                    title="Import from ledger"
+                >
+                    <ScanText className="w-5 h-5" />
+                </button>
             </div>
 
             {/* Floating Action Button */}

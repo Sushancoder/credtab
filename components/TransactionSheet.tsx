@@ -20,9 +20,9 @@ type Props = {
   contactId: string
   contactName: string
 } & (
-  | { mode: 'add'; type: 'gave' | 'got'; transaction?: never }
-  | { mode: 'edit'; transaction: Transaction; type?: never }
-)
+    | { mode: 'add'; type: 'gave' | 'got'; transaction?: never }
+    | { mode: 'edit'; transaction: Transaction; type?: never }
+  )
 
 // Callbacks after success
 type Callbacks = {
@@ -141,65 +141,67 @@ export default function TransactionSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="rounded-t-2xl pb-8">
-        <SheetHeader className="px-4 pt-2 pb-0">
+      <SheetContent side="bottom" className="rounded-t-2xl flex flex-col max-h-[90dvh]">
+        <SheetHeader className="px-4 pt-2 pb-0 shrink-0">
           <SheetTitle>{title}</SheetTitle>
         </SheetHeader>
 
-        <form onSubmit={handleSubmit} className="px-4 pt-4 space-y-4">
-          {/* Amount */}
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium" htmlFor="txn-amount">
-              Amount <span className="text-rose-500">*</span>
-            </label>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">₹</span>
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+          {/* Scrollable body */}
+          <div className="flex-1 overflow-y-auto px-4 pt-4 space-y-4">
+            {/* Amount */}
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium" htmlFor="txn-amount">
+                Amount <span className="text-rose-500">*</span>
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">₹</span>
+                <Input
+                  id="txn-amount"
+                  type="number"
+                  placeholder="0"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  className="pl-7"
+                  autoFocus
+                  min="0"
+                  step="any"
+                  autoComplete="off"
+                />
+              </div>
+            </div>
+
+            {/* Note */}
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium" htmlFor="txn-note">
+                Note <span className="text-muted-foreground font-normal">(optional)</span>
+              </label>
               <Input
-                id="txn-amount"
-                type="number"
-                placeholder="0"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                className="pl-7"
-                autoFocus
-                min="0"
-                step="any"
+                id="txn-note"
+                placeholder="e.g. Monthly stock payment"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
                 autoComplete="off"
               />
             </div>
+
+            {/* Direction indicator (display only) */}
+            <div className="flex items-center gap-2 pt-1">
+              <div
+                className={`w-2.5 h-2.5 rounded-full ${direction === 'gave' ? 'bg-rose-500' : 'bg-emerald-500'
+                  }`}
+              />
+              <span className="text-sm text-muted-foreground">
+                {direction === 'gave' ? 'You Gave (Credit)' : 'You Got (Payment)'}
+              </span>
+            </div>
+
+            {/* Error */}
+            {error && <p className="text-sm text-rose-500">{error}</p>}
           </div>
 
-          {/* Note */}
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium" htmlFor="txn-note">
-              Note <span className="text-muted-foreground font-normal">(optional)</span>
-            </label>
-            <Input
-              id="txn-note"
-              placeholder="e.g. Monthly stock payment"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              autoComplete="off"
-            />
-          </div>
-
-          {/* Direction indicator (display only) */}
-          <div className="flex items-center gap-2 pt-1">
-            <div
-              className={`w-2.5 h-2.5 rounded-full ${
-                direction === 'gave' ? 'bg-rose-500' : 'bg-emerald-500'
-              }`}
-            />
-            <span className="text-sm text-muted-foreground">
-              {direction === 'gave' ? 'You Gave (Credit)' : 'You Got (Payment)'}
-            </span>
-          </div>
-
-          {/* Error */}
-          {error && <p className="text-sm text-rose-500">{error}</p>}
-
-          {/* Submit */}
-          <SheetFooter className="px-0 pb-0 pt-2 flex-col gap-3">
+          {/* Sticky footer — always visible above keyboard */}
+          <SheetFooter className="px-4 pt-3 pb-8 shrink-0 flex-col gap-3">
             <Button
               type="submit"
               className="w-full"

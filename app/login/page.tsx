@@ -1,6 +1,7 @@
 "use client"
 
 import { createClient } from "@/lib/supabase/client"
+import Image from 'next/image'
 
 export default function LoginPage() {
     async function handleGoogleLogin() {
@@ -20,7 +21,7 @@ export default function LoginPage() {
                 {/* Logo + Title */}
                 <div className="text-center space-y-2">
                     <div className="inline-flex items-center justify-center mb-2">
-                        <img src="/logo.svg" alt="CredTab Logo" className="w-16 h-16 drop-shadow-sm" />
+                        <Image src="/logo.svg" alt="CredTab Logo" width={64} height={64} className="drop-shadow-sm" priority />
                     </div>
                     <h1 className="text-2xl font-semibold tracking-tight">CredTab</h1>
                     <p className="text-sm text-muted-foreground">

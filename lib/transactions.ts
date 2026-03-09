@@ -13,6 +13,7 @@ export async function getTransactions(contactId: string): Promise<Transaction[]>
     .select('id, contact_id, amount, note, created_at, is_deleted')
     .eq('contact_id', contactId)
     .order('created_at', { ascending: true }) // oldest first (chat style, scroll down for newest)
+    .order('id', { ascending: true })         // stable tiebreaker for same-timestamp rows
 
   if (error || !data) {
     console.error('Error fetching transactions:', error)
@@ -102,3 +103,40 @@ export async function deleteTransaction(id: string) {
 
   return { error }
 }
+
+/**
+ * Bulk-insert multiple transactions in a single DB round-trip.
+ *
+ * IMPORTANT — callers must handle the two data-type conversions before calling this:
+ *   1. direction + amount → signed amount:
+ *        direction === 'gave' ? +amount : -amount
+ *   2. date string (YYYY-MM-DD) → ISO timestamp:
+ *        new Date(date).toISOString()
+ */
+export type BulkTransaction = {
+  contact_id: string
+  amount: number          // already signed: positive = gave, negative = got
+  note: string | null
+  created_at: string      // full ISO timestamp
+}
+
+export async function bulkAddTransactions(transactions: BulkTransaction[]) {
+  if (transactions.length === 0) return { error: null }
+
+  const supabase = createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: { message: 'Not authenticated' } }
+
+  const rows = transactions.map((t) => ({
+    user_id: user.id,
+    contact_id: t.contact_id,
+    amount: t.amount,
+    note: t.note?.trim() || null,
+    created_at: t.created_at,
+  }))
+
+  const { error } = await supabase.from('transactions').insert(rows)
+  return { error }
+}
+

@@ -79,73 +79,77 @@ export default function AddContactSheet({
 
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
-            <SheetContent side="bottom" className="rounded-t-2xl pb-8">
-                <SheetHeader className="px-4 pt-2 pb-0">
+            <SheetContent side="bottom" className="rounded-t-2xl flex flex-col max-h-[90dvh]">
+                <SheetHeader className="px-4 pt-2 pb-0 shrink-0">
                     <SheetTitle>Add Contact</SheetTitle>
                 </SheetHeader>
 
-                <form onSubmit={handleSubmit} className="px-4 pt-4 space-y-4">
-                    {/* Name */}
-                    <div className="space-y-1.5">
-                        <label className="text-sm font-medium" htmlFor="contact-name">
-                            Name <span className="text-rose-500">*</span>
-                        </label>
-                        <Input
-                            id="contact-name"
-                            placeholder="e.g. Ramesh Kumar"
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
-                            autoFocus
-                            autoComplete="off"
-                        />
-                    </div>
+                <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+                    {/* Scrollable body */}
+                    <div className="flex-1 overflow-y-auto px-4 pt-4 space-y-4">
+                        {/* Name */}
+                        <div className="space-y-1.5">
+                            <label className="text-sm font-medium" htmlFor="contact-name">
+                                Name <span className="text-rose-500">*</span>
+                            </label>
+                            <Input
+                                id="contact-name"
+                                placeholder="e.g. Ramesh Kumar"
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                                autoFocus
+                                autoComplete="off"
+                            />
+                        </div>
 
-                    {/* Phone */}
-                    <div className="space-y-1.5">
-                        <label className="text-sm font-medium" htmlFor="contact-phone">
-                            Phone <span className="text-muted-foreground font-normal">(optional)</span>
-                        </label>
-                        <Input
-                            id="contact-phone"
-                            placeholder="e.g. 9876543210"
-                            type="tel"
-                            value={phone}
-                            onChange={(e) => setPhone(e.target.value)}
-                            autoComplete="off"
-                        />
-                    </div>
+                        {/* Phone */}
+                        <div className="space-y-1.5">
+                            <label className="text-sm font-medium" htmlFor="contact-phone">
+                                Phone <span className="text-muted-foreground font-normal">(optional)</span>
+                            </label>
+                            <Input
+                                id="contact-phone"
+                                placeholder="e.g. 9876543210"
+                                type="tel"
+                                value={phone}
+                                onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
+                                autoComplete="off"
+                            />
+                        </div>
 
-                    {/* Error */}
-                    {error && <p className="text-sm text-rose-500">{error}</p>}
+                        {/* Error */}
+                        {error && <p className="text-sm text-rose-500">{error}</p>}
 
-                    {/* Type Toggle */}
-                    <div className="pt-2">
-                        <p className="text-sm font-medium mb-2">Type</p>
-                        <div className="grid grid-cols-2 gap-2">
-                            <button
-                                type="button"
-                                onClick={() => setType('customer')}
-                                className={`py-2 rounded-lg text-sm font-medium border transition-colors ${type === 'customer'
-                                    ? 'bg-primary text-primary-foreground border-primary'
-                                    : 'bg-background text-foreground border-border hover:bg-muted'
-                                    }`}
-                            >
-                                Customer
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setType('supplier')}
-                                className={`py-2 rounded-lg text-sm font-medium border transition-colors ${type === 'supplier'
-                                    ? 'bg-primary text-primary-foreground border-primary'
-                                    : 'bg-background text-foreground border-border hover:bg-muted'
-                                    }`}
-                            >
-                                Supplier
-                            </button>
+                        {/* Type Toggle */}
+                        <div className="pt-2">
+                            <p className="text-sm font-medium mb-2">Type</p>
+                            <div className="grid grid-cols-2 gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setType('customer')}
+                                    className={`py-2 rounded-lg text-sm font-medium border transition-colors ${type === 'customer'
+                                        ? 'bg-primary text-primary-foreground border-primary'
+                                        : 'bg-background text-foreground border-border hover:bg-muted'
+                                        }`}
+                                >
+                                    Customer
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setType('supplier')}
+                                    className={`py-2 rounded-lg text-sm font-medium border transition-colors ${type === 'supplier'
+                                        ? 'bg-primary text-primary-foreground border-primary'
+                                        : 'bg-background text-foreground border-border hover:bg-muted'
+                                        }`}
+                                >
+                                    Supplier
+                                </button>
+                            </div>
                         </div>
                     </div>
 
-                    <SheetFooter className="px-0 pb-0 pt-2">
+                    {/* Sticky footer — always visible above keyboard */}
+                    <SheetFooter className="px-4 pt-3 pb-8 shrink-0">
                         <Button type="submit" className="w-full" disabled={loading}>
                             {loading ? 'Saving...' : 'Save Contact'}
                         </Button>

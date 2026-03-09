@@ -10,9 +10,14 @@ function formatINR(amount: number): string {
   }).format(Math.abs(amount))
 }
 
-// Formats timestamp to time string (e.g. "2:30 PM")
-function formatTime(dateStr: string): string {
-  return new Date(dateStr).toLocaleTimeString('en-IN', {
+// Formats timestamp to time string (e.g. "2:30 PM").
+// Returns null if the time is exactly 00:00:00 UTC (date-only entries).
+function formatTime(dateStr: string): string | null {
+  const d = new Date(dateStr)
+  if (d.getUTCHours() === 0 && d.getUTCMinutes() === 0 && d.getUTCSeconds() === 0) {
+    return null
+  }
+  return d.toLocaleTimeString('en-IN', {
     hour: 'numeric',
     minute: '2-digit',
     hour12: true,
@@ -42,7 +47,7 @@ export default function TransactionBubble({ transaction, onEdit, runningBalance 
   // --- Deleted transaction: greyed out, not clickable ---
   if (is_deleted) {
     return (
-      <div className={`flex flex-col ${isGot ? 'items-end' : 'items-start'} px-4 gap-0.5`}>
+      <div className={`flex flex-col ${isGave ? 'items-end' : 'items-start'} px-4 gap-0.5`}>
         <div className="max-w-[70%] rounded-xl px-4 py-2.5 bg-muted/50 border border-border/50 space-y-1 opacity-60">
           {/* Deleted label */}
           <div className="flex items-center gap-1.5 text-muted-foreground">
@@ -54,9 +59,11 @@ export default function TransactionBubble({ transaction, onEdit, runningBalance 
             {formatINR(amount)}
           </p>
           {/* Time */}
-          <span className="text-xs text-muted-foreground">
-            {formatTime(created_at)}
-          </span>
+          {formatTime(created_at) && (
+            <span className="text-xs text-muted-foreground">
+              {formatTime(created_at)}
+            </span>
+          )}
         </div>
       </div>
     )
@@ -64,7 +71,7 @@ export default function TransactionBubble({ transaction, onEdit, runningBalance 
 
   // --- Normal transaction bubble ---
   return (
-    <div className={`flex flex-col ${isGot ? 'items-end' : 'items-start'} px-4 gap-0.5`}>
+    <div className={`flex flex-col ${isGave ? 'items-end' : 'items-start'} px-4 gap-0.5`}>
       <button
         onClick={() => onEdit(transaction)}
         className={`
@@ -93,11 +100,13 @@ export default function TransactionBubble({ transaction, onEdit, runningBalance 
         )}
 
         {/* Time */}
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">
-            {formatTime(created_at)}
-          </span>
-        </div>
+        {formatTime(created_at) && (
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">
+              {formatTime(created_at)}
+            </span>
+          </div>
+        )}
       </button>
 
       {/* Running balance below the bubble */}

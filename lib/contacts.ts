@@ -98,3 +98,31 @@ export async function updateContact(
 
     return { contact, error }
 }
+
+/**
+ * Bulk-insert multiple contacts in a single DB round-trip.
+ * Returns the created contacts (with DB-assigned IDs) or an error.
+ */
+export async function bulkAddContacts(contacts: NewContact[]) {
+    if (contacts.length === 0) return { contacts: [], error: null }
+
+    const supabase = createClient()
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { contacts: [], error: { message: 'Not authenticated' } }
+
+    const rows = contacts.map((c) => ({
+        name: c.name.trim(),
+        phone: c.phone?.trim() || null,
+        type: c.type,
+        user_id: user.id,
+    }))
+
+    const { data, error } = await supabase
+        .from('contacts')
+        .insert(rows)
+        .select('id, name, phone, type, created_at')
+
+    return { contacts: data ?? [], error }
+}
+
