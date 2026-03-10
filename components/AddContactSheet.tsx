@@ -99,6 +99,7 @@ export default function AddContactSheet({
                                 onChange={(e) => setName(e.target.value)}
                                 autoFocus
                                 autoComplete="off"
+                                inputMode="text"
                             />
                         </div>
 
@@ -114,6 +115,7 @@ export default function AddContactSheet({
                                 value={phone}
                                 onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
                                 autoComplete="off"
+                                inputMode="tel"
                             />
                         </div>
 

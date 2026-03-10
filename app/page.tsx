@@ -172,7 +172,7 @@ export default function HomePage() {
                 <button
                     id="import-ledger-fab"
                     onClick={() => router.push('/import')}
-                    className="w-12 h-12 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:opacity-90 active:scale-95 transition-all"
+                    className="w-12 h-12 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:opacity-90 active:scale-95 transition-all cursor-pointer"
                     aria-label="Import from ledger"
                     title="Import from ledger"
                 >
@@ -184,7 +184,7 @@ export default function HomePage() {
             <button
                 id="add-contact-fab"
                 onClick={() => setSheetOpen(true)}
-                className="fixed bottom-6 right-6 h-12 px-5 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center gap-2 hover:opacity-90 active:scale-95 transition-all"
+                className="fixed bottom-6 right-6 h-12 px-5 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center gap-2 hover:opacity-90 active:scale-95 transition-all cursor-pointer"
                 aria-label="Add contact"
             >
                 <Plus className="w-5 h-5" />

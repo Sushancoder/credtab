@@ -305,7 +305,6 @@ export default function ImportPage() {
                 type="file"
                 accept="image/*"
                 multiple
-                capture="environment"
                 className="hidden"
                 onChange={handleFilesSelected}
             />

@@ -82,7 +82,7 @@ type ContactInfo = Omit<Contact, 'balance'>
 export default function ContactDetailPage() {
   const params = useParams<{ id: string }>()
   const router = useRouter()
-  const scrollRef = useRef<HTMLDivElement>(null)
+  const bottomRef = useRef<HTMLDivElement>(null)
 
   const [contact, setContact] = useState<ContactInfo | null>(null)
   const [transactions, setTransactions] = useState<Transaction[]>([])
@@ -149,9 +149,10 @@ export default function ContactDetailPage() {
 
   // Scroll to bottom when transactions load or new one added
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
-    }
+    const timer = setTimeout(() => {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
+    }, 100)
+    return () => clearTimeout(timer)
   }, [transactions])
 
   // Calculate balance from loaded transactions
@@ -371,7 +372,7 @@ export default function ContactDetailPage() {
       </header>
 
       {/* Transaction List (scrollable) */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto py-4 space-y-3 pb-24">
+      <div className="flex-1 overflow-y-auto py-4 space-y-3 pb-24">
         {transactions.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 text-center px-8">
             <p className="text-sm text-muted-foreground">
@@ -403,6 +404,7 @@ export default function ContactDetailPage() {
             </div>
           ))
         )}
+        <div ref={bottomRef} />
       </div>
 
       {/* Bottom Action Bar */}

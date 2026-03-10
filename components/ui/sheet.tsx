@@ -44,7 +44,7 @@ function SheetOverlay({
   )
 }
 
-function SheetContent({
+function SheetContent({ 
   className,
   children,
   side = "right",
@@ -54,11 +54,47 @@ function SheetContent({
   side?: "top" | "right" | "bottom" | "left"
   showCloseButton?: boolean
 }) {
+  const [viewport, setViewport] = React.useState({ height: 0, offset: 0 })
+
+  React.useEffect(() => {
+    const vv = window.visualViewport
+    if (!vv) return
+
+    const update = () => {
+      // Distance from the bottom of the layout viewport to the bottom of the visual viewport.
+      // E.g., the height of the virtual keyboard + autofill bar.
+      const offset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop)
+      setViewport({ height: vv.height, offset })
+    }
+
+    vv.addEventListener("resize", update)
+    vv.addEventListener("scroll", update)
+
+    // Initial calculation + a slight delay for devices that trigger layout before UI paints
+    update()
+    setTimeout(update, 100)
+
+    return () => {
+      vv.removeEventListener("resize", update)
+      vv.removeEventListener("scroll", update)
+    }
+  }, [])
+
+  // Apply dynamic sizing specifically to bottom sheets when the visual viewport tracking is active
+  const dynamicStyles: React.CSSProperties =
+    side === "bottom" && viewport.height > 0
+      ? {
+        maxHeight: `${viewport.height * 0.9}px`, // 90% of the UN-OBSCURED screen
+        bottom: `${viewport.offset}px`, // Push up by EXACTLY the keyboard height
+      }
+      : {}
+
   return (
     <SheetPortal>
       <SheetOverlay />
       <SheetPrimitive.Content
         data-slot="sheet-content"
+        style={{ ...props.style, ...dynamicStyles }}
         className={cn(
           "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out fixed z-50 flex flex-col gap-4 shadow-lg transition ease-in-out data-[state=closed]:duration-300 data-[state=open]:duration-500",
           side === "right" &&
@@ -68,7 +104,7 @@ function SheetContent({
           side === "top" &&
           "data-[state=closed]:slide-out-to-top data-[state=open]:slide-in-from-top inset-x-0 top-0 h-auto border-b",
           side === "bottom" &&
-          "data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom inset-x-0 bottom-0 h-auto max-h-[85dvh] overflow-y-auto border-t",
+          "data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom inset-x-0 h-auto overflow-y-auto border-t",
           className
         )}
         {...props}

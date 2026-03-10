@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from 'react'
-import { Trash2 } from 'lucide-react'
+import { Trash2, ArrowDownLeft, ArrowUpRight } from 'lucide-react'
 import { addTransaction, updateTransaction, deleteTransaction } from '@/lib/transactions'
 import type { Transaction } from '@/lib/types'
 import {
@@ -45,20 +45,22 @@ export default function TransactionSheet({
 }: Props & Callbacks) {
   const [amount, setAmount] = useState('')
   const [note, setNote] = useState('')
+  const [direction, setDirection] = useState<'gave' | 'got'>(
+    mode === 'add' ? type! : transaction!.amount > 0 ? 'gave' : 'got'
+  )
   const [loading, setLoading] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState('')
-
-  // Determine direction: "gave" or "got"
-  const direction = mode === 'add'
-    ? type!
-    : transaction!.amount > 0 ? 'gave' : 'got'
 
   // Pre-fill fields when editing, reset when closing
   useEffect(() => {
     if (open && mode === 'edit' && transaction) {
       setAmount(String(Math.abs(transaction.amount)))
       setNote(transaction.note ?? '')
+      setDirection(transaction.amount > 0 ? 'gave' : 'got')
+    }
+    if (open && mode === 'add') {
+      setDirection(type!)
     }
     if (!open) {
       setAmount('')
@@ -67,12 +69,10 @@ export default function TransactionSheet({
       setLoading(false)
       setDeleting(false)
     }
-  }, [open, mode, transaction])
+  }, [open, mode, transaction, type])
 
-  // Build title
-  const title = mode === 'add'
-    ? `You ${direction === 'gave' ? 'Gave to' : 'Got from'} ${contactName}`
-    : 'Edit Transaction'
+  // Build title — updates live as direction changes
+  const title = `You ${direction === 'gave' ? 'Gave to' : 'Got from'} ${contactName}`
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -167,6 +167,7 @@ export default function TransactionSheet({
                   min="0"
                   step="any"
                   autoComplete="off"
+                  inputMode="decimal"
                 />
               </div>
             </div>
@@ -180,21 +181,46 @@ export default function TransactionSheet({
                 id="txn-note"
                 placeholder="e.g. Monthly stock payment"
                 value={note}
-                onChange={(e) => setNote(e.target.value)}
+                onChange={(e) => setNote(e.target.value.slice(0, 500))}
                 autoComplete="off"
+                maxLength={500}
+                inputMode="text"
               />
+              {note.length > 0 && (
+                <p className={`text-xs text-right tabular-nums ${note.length >= 500 ? 'text-rose-500' : 'text-muted-foreground'
+                  }`}>
+                  {note.length} / 500
+                </p>
+              )}
             </div>
 
-            {/* Direction indicator (display only) */}
-            <div className="flex items-center gap-2 pt-1">
-              <div
-                className={`w-2.5 h-2.5 rounded-full ${direction === 'gave' ? 'bg-rose-500' : 'bg-emerald-500'
-                  }`}
-              />
-              <span className="text-sm text-muted-foreground">
-                {direction === 'gave' ? 'You Gave (Credit)' : 'You Got (Payment)'}
-              </span>
-            </div>
+            {/* Direction toggle — edit mode only */}
+            {mode === 'edit' && (
+              <div className="grid grid-cols-2 rounded-xl border border-border overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setDirection('got')}
+                  className={`flex items-center justify-center gap-2 py-2.5 text-sm font-medium transition-colors ${direction === 'got'
+                    ? 'bg-emerald-500 text-white'
+                    : 'bg-background text-muted-foreground hover:bg-muted'
+                    }`}
+                >
+                  <ArrowDownLeft className="w-4 h-4" />
+                  Received
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDirection('gave')}
+                  className={`flex items-center justify-center gap-2 py-2.5 text-sm font-medium transition-colors border-l border-border ${direction === 'gave'
+                    ? 'bg-rose-500 text-white'
+                    : 'bg-background text-muted-foreground hover:bg-muted'
+                    }`}
+                >
+                  <ArrowUpRight className="w-4 h-4" />
+                  Given
+                </button>
+              </div>
+            )}
 
             {/* Error */}
             {error && <p className="text-sm text-rose-500">{error}</p>}

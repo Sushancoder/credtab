@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Trash2, ArrowDown, ArrowUp, Plus } from 'lucide-react'
+import { ArrowLeft, Trash2, ArrowDown, ArrowUp, Plus, ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { getContacts, bulkAddContacts } from '@/lib/contacts'
@@ -28,7 +28,7 @@ function buildReviewLedger(extracted: ExtractedLedger, existing: Contact[]): Rev
                 localId: crypto.randomUUID(),
                 name: c.name,
                 phone: c.phone ?? null,
-                type: c.type,
+                type: (c.type === 'customer' || c.type === 'supplier') ? c.type : 'customer',
                 isNew: !match,
                 existingContactId: match?.id,
                 transactions: c.transactions.map((t) => ({
@@ -36,7 +36,7 @@ function buildReviewLedger(extracted: ExtractedLedger, existing: Contact[]): Rev
                     direction: t.direction,
                     amount: t.amount,
                     date: t.date ?? todayISO(),
-                    note: t.note ?? null,
+                    note: t.note ? t.note.slice(0, 500) : null,
                 })),
             }
         }),
@@ -47,15 +47,44 @@ function totalTransactions(ledger: ReviewLedger) {
     return ledger.contacts.reduce((sum, c) => sum + c.transactions.length, 0)
 }
 
+// ─── Validation ───────────────────────────────────────────────────────────────
+
+type TxErrors = { amount?: string; note?: string }
+type ContactErrors = { name?: string; transactions: Record<string, TxErrors> }
+type LedgerErrors = Record<string, ContactErrors>
+
+function validateLedger(ledger: ReviewLedger): LedgerErrors {
+    const errors: LedgerErrors = {}
+    for (const c of ledger.contacts) {
+        const ce: ContactErrors = { transactions: {} }
+        if (!c.name.trim()) ce.name = 'Name is required'
+        for (const tx of c.transactions) {
+            const txErr: TxErrors = {}
+            if (!tx.amount || tx.amount <= 0) txErr.amount = 'Enter an amount greater than 0'
+            if (tx.note && tx.note.length > 500) txErr.note = 'Note must be 500 characters or fewer'
+            if (Object.keys(txErr).length > 0) ce.transactions[tx.localId] = txErr
+        }
+        if (ce.name || Object.keys(ce.transactions).length > 0) {
+            errors[c.localId] = ce
+        }
+    }
+    return errors
+}
+
+function hasErrors(errors: LedgerErrors) {
+    return Object.keys(errors).length > 0
+}
+
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 type TransactionRowProps = {
     tx: ReviewTransaction
+    errors?: TxErrors
     onChange: (field: keyof ReviewTransaction, value: string | number) => void
     onDelete: () => void
 }
 
-function TransactionRow({ tx, onChange, onDelete }: TransactionRowProps) {
+function TransactionRow({ tx, errors, onChange, onDelete }: TransactionRowProps) {
     const isGave = tx.direction === 'gave'
 
     return (
@@ -88,9 +117,12 @@ function TransactionRow({ tx, onChange, onDelete }: TransactionRowProps) {
                         step="any"
                         value={tx.amount}
                         onChange={(e) => onChange('amount', parseFloat(e.target.value) || 0)}
-                        className="pl-7 h-9 text-sm"
+                        className={`pl-7 h-9 text-sm ${errors?.amount ? 'border-rose-400 focus-visible:ring-rose-400' : ''}`}
                         placeholder="0"
                     />
+                    {errors?.amount && (
+                        <p className="text-[10px] text-rose-500 mt-0.5">{errors.amount}</p>
+                    )}
                 </div>
 
                 {/* Delete */}
@@ -112,13 +144,25 @@ function TransactionRow({ tx, onChange, onDelete }: TransactionRowProps) {
                     onChange={(e) => onChange('date', e.target.value)}
                     className="h-9 text-sm flex-1"
                 />
-                <Input
-                    type="text"
-                    value={tx.note ?? ''}
-                    onChange={(e) => onChange('note', e.target.value)}
-                    placeholder="Note (optional)"
-                    className="h-9 text-sm flex-1"
-                />
+                <div className="flex-1 flex flex-col gap-0.5">
+                    <Input
+                        type="text"
+                        value={tx.note ?? ''}
+                        onChange={(e) => onChange('note', e.target.value.slice(0, 500))}
+                        placeholder="Note (optional)"
+                        maxLength={500}
+                        className={`h-9 text-sm ${errors?.note ? 'border-rose-400 focus-visible:ring-rose-400' : ''}`}
+                    />
+                    {(tx.note?.length ?? 0) > 0 && (
+                        <p className={`text-[10px] text-right tabular-nums ${(tx.note?.length ?? 0) >= 500 ? 'text-rose-500' : 'text-muted-foreground'
+                            }`}>
+                            {tx.note?.length ?? 0} / 500
+                        </p>
+                    )}
+                    {errors?.note && (
+                        <p className="text-[10px] text-rose-500">{errors.note}</p>
+                    )}
+                </div>
             </div>
         </div>
     )
@@ -129,6 +173,7 @@ function TransactionRow({ tx, onChange, onDelete }: TransactionRowProps) {
 type ContactCardProps = {
     contact: ReviewContact
     index: number
+    errors?: ContactErrors
     onUpdateContact: (field: keyof ReviewContact, value: string) => void
     onUpdateTransaction: (txLocalId: string, field: keyof ReviewTransaction, value: string | number) => void
     onDeleteTransaction: (txLocalId: string) => void
@@ -139,6 +184,7 @@ type ContactCardProps = {
 function ContactCard({
     contact,
     index,
+    errors,
     onUpdateContact,
     onUpdateTransaction,
     onDeleteTransaction,
@@ -159,12 +205,17 @@ function ContactCard({
                     <div className="flex-1 space-y-2">
                         {/* Name + new badge */}
                         <div className="flex items-center gap-2">
-                            <Input
-                                value={contact.name}
-                                onChange={(e) => onUpdateContact('name', e.target.value)}
-                                placeholder="Contact name"
-                                className="h-9 text-sm font-medium flex-1"
-                            />
+                            <div className="flex-1">
+                                <Input
+                                    value={contact.name}
+                                    onChange={(e) => onUpdateContact('name', e.target.value)}
+                                    placeholder="Contact name"
+                                    className={`h-9 text-sm font-medium ${errors?.name ? 'border-rose-400 focus-visible:ring-rose-400' : ''}`}
+                                />
+                                {errors?.name && (
+                                    <p className="text-[10px] text-rose-500 mt-0.5">{errors.name}</p>
+                                )}
+                            </div>
                             {contact.isNew && (
                                 <span className="shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400 border border-blue-200 dark:border-blue-900">
                                     new
@@ -223,6 +274,7 @@ function ContactCard({
                         <TransactionRow
                             key={tx.localId}
                             tx={tx}
+                            errors={errors?.transactions[tx.localId]}
                             onChange={(field, value) => onUpdateTransaction(tx.localId, field, value)}
                             onDelete={() => onDeleteTransaction(tx.localId)}
                         />
@@ -251,6 +303,7 @@ export default function ReviewPage() {
     const [loadError, setLoadError] = useState<string | null>(null)
     const [submitting, setSubmitting] = useState(false)
     const [submitError, setSubmitError] = useState<string | null>(null)
+    const [tipsOpen, setTipsOpen] = useState(false)
 
     useEffect(() => {
         async function init() {
@@ -426,6 +479,7 @@ export default function ReviewPage() {
     }
 
     const txCount = totalTransactions(ledger)
+    const errors = validateLedger(ledger)
 
     return (
         <div className="min-h-screen bg-background flex flex-col max-w-lg mx-auto">
@@ -454,6 +508,40 @@ export default function ReviewPage() {
                 </p>
             </div>
 
+            {/* Tips panel */}
+            <div className="mx-4 mt-2 rounded-lg border border-border overflow-hidden">
+                <button
+                    type="button"
+                    onClick={() => setTipsOpen((o) => !o)}
+                    className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-muted-foreground hover:bg-muted/60 transition-colors"
+                >
+                    <span>💡 Tips for reviewing</span>
+                    <ChevronDown
+                        className={`w-3.5 h-3.5 transition-transform duration-200 ${tipsOpen ? 'rotate-180' : ''}`}
+                    />
+                </button>
+                {tipsOpen && (
+                    <ul className="px-3 pb-3 pt-1 space-y-1.5 border-t border-border">
+                        <li className="text-xs text-muted-foreground flex gap-2">
+                            <span className="shrink-0">🔵</span>
+                            <span>Contacts marked <strong className="text-foreground">new</strong> will be created fresh. Existing ones will just get new transactions added.</span>
+                        </li>
+                        <li className="text-xs text-muted-foreground flex gap-2">
+                            <span className="shrink-0">🔁</span>
+                            <span>Tap the <strong className="text-foreground">Gave / Got</strong> pill on a transaction to flip its direction.</span>
+                        </li>
+                        <li className="text-xs text-muted-foreground flex gap-2">
+                            <span className="shrink-0">✏️</span>
+                            <span>You can edit contact names, phone numbers, amounts, dates, and notes before importing.</span>
+                        </li>
+                        <li className="text-xs text-muted-foreground flex gap-2">
+                            <span className="shrink-0">🗑️</span>
+                            <span>Use the trash icon to remove a contact or transaction you don&apos;t want to import.</span>
+                        </li>
+                    </ul>
+                )}
+            </div>
+
             {/* Contact list */}
             <div className="flex-1 flex flex-col gap-3 px-4 py-4 pb-32">
                 {ledger.contacts.length === 0 ? (
@@ -469,6 +557,7 @@ export default function ReviewPage() {
                             key={contact.localId}
                             contact={contact}
                             index={i}
+                            errors={errors[contact.localId]}
                             onUpdateContact={(field, value) => updateContact(contact.localId, field, value)}
                             onUpdateTransaction={(txId, field, value) =>
                                 updateTransaction(contact.localId, txId, field, value)
@@ -490,7 +579,7 @@ export default function ReviewPage() {
                 )}
                 <Button
                     className="w-full"
-                    disabled={ledger.contacts.length === 0 || submitting}
+                    disabled={ledger.contacts.length === 0 || hasErrors(errors) || submitting}
                     onClick={handleConfirm}
                 >
                     {submitting ? 'Importing...' : 'Confirm & Import'}

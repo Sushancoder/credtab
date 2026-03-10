@@ -76,10 +76,8 @@ Rules:
 - "amount" must always be a positive number.
 - Dates may be written in various formats (e.g., "5/3", "5 March", "5 Mar 25") — convert to YYYY-MM-DD. If no year is specified, use the current year.
 - If a date is illegible or absent, set "date" to null.
-- "note" should capture the accompanying note, item name, or reason AND any extra/miscellaneous details visible near the transaction — for example: payment method (cash/UPI/cheque), cheque number, "partial payment", "advance", "balance brought forward", instalment number, or any other remark. Combine all extra details into one concise, readable string.
-- Set "note" to null only if there is truly nothing written near the transaction.
-- If you cannot determine if a contact is a customer or supplier from context, default to "customer".
-- Do not invent or guess transactions that are not clearly visible. Only extract what you can read.
+- "note" should capture the accompanying note, item name, or reason AND any extra/miscellaneous details visible near the transaction — for example: payment method (cash/UPI/cheque), cheque number, "partial payment", :
+- If any data point (name, amount, date, phone, note, type) is illegible, unclear, smudged, or not present in the image, leave that field empty (null) rather than guessing or filling it with an assumed value. Never fabricate data.
 - If multiple images are provided, treat them as pages of the same ledger and consolidate results.`
 
 // ─── Route handler ────────────────────────────────────────────────────────────
