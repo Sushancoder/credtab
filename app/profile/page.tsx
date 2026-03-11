@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Users, Truck, CalendarDays, LogOut } from 'lucide-react'
+import { ArrowLeft, Users, Truck, CalendarDays, LogOut, Mic } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { getVoiceLang, setVoiceLang, type VoiceLang } from '@/lib/voice-lang'
 import { Button } from '@/components/ui/button'
 
 type ProfileData = {
@@ -20,6 +21,11 @@ export default function ProfilePage() {
     const [profile, setProfile] = useState<ProfileData | null>(null)
     const [loading, setLoading] = useState(true)
     const [loggingOut, setLoggingOut] = useState(false)
+    const [voiceLang, setVoiceLangState] = useState<VoiceLang>('en-IN')
+
+    useEffect(() => {
+        setVoiceLangState(getVoiceLang())
+    }, [])
 
     useEffect(() => {
         async function load() {
@@ -64,6 +70,11 @@ export default function ProfilePage() {
         const supabase = createClient()
         await supabase.auth.signOut()
         router.push('/login')
+    }
+
+    function handleLangChange(lang: VoiceLang) {
+        setVoiceLang(lang)
+        setVoiceLangState(lang)
     }
 
     return (
@@ -134,6 +145,41 @@ export default function ProfilePage() {
                                 <span className="text-sm">Member since</span>
                             </div>
                             <span className="text-sm font-medium">{profile.memberSince}</span>
+                        </div>
+                    </div>
+
+                    {/* Voice Language */}
+                    <div className="px-4 mt-1">
+                        <div className="flex items-center justify-between py-3 px-4 rounded-lg hover:bg-muted/50 transition-colors">
+                            <div className="flex items-center gap-3">
+                                <Mic className="w-4 h-4 text-muted-foreground" />
+                                <div>
+                                    <span className="text-sm">Voice Language</span>
+                                    <p className="text-xs text-muted-foreground">Used for voice transactions</p>
+                                </div>
+                            </div>
+                            <div className="flex rounded-full overflow-hidden border border-border text-xs font-semibold">
+                                <button
+                                    onClick={() => handleLangChange('en-IN')}
+                                    className={`px-3 py-1.5 transition-colors ${
+                                        voiceLang === 'en-IN'
+                                            ? 'bg-primary text-primary-foreground'
+                                            : 'text-muted-foreground hover:bg-muted'
+                                    }`}
+                                >
+                                    English
+                                </button>
+                                <button
+                                    onClick={() => handleLangChange('hi-IN')}
+                                    className={`px-3 py-1.5 transition-colors ${
+                                        voiceLang === 'hi-IN'
+                                            ? 'bg-primary text-primary-foreground'
+                                            : 'text-muted-foreground hover:bg-muted'
+                                    }`}
+                                >
+                                    हिंदी
+                                </button>
+                            </div>
                         </div>
                     </div>
 

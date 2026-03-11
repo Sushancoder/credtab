@@ -7,6 +7,7 @@ import type { Contact } from '@/lib/types'
 import { addContact } from '@/lib/contacts'
 import { addTransaction } from '@/lib/transactions'
 import { getAvatarColor } from '@/lib/avatar'
+import { getVoiceLang } from '@/lib/voice-lang'
 
 interface VoiceTransactionProps {
     contacts: Contact[]
@@ -54,8 +55,8 @@ export default function VoiceTransaction({ contacts }: VoiceTransactionProps) {
         recognitionRef.current = recognition
         recognition.continuous = true
         recognition.interimResults = true
-        // Fix 4: Support Hindi, English, and Hinglish
-        recognition.lang = 'hi-IN'
+        // Read language preference from user settings (falls back to en-IN)
+        recognition.lang = getVoiceLang()
 
         recognition.onstart = () => {
             setIsListening(true)
@@ -179,7 +180,7 @@ export default function VoiceTransaction({ contacts }: VoiceTransactionProps) {
             {/* The microphone button fixed in the bottom middle */}
             <button
                 onClick={startListening}
-                className="fixed bottom-6 left-1/2 -translate-x-1/2 w-12 h-12 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:opacity-90 active:scale-95 transition-all cursor-pointer z-20"
+                className="fixed bottom-6 left-1/3 -translate-x-1/2 w-12 h-12 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center hover:opacity-90 active:scale-95 transition-all cursor-pointer z-20"
                 aria-label="Add transaction with voice"
                 title="Add transaction with voice"
             >

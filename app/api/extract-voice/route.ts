@@ -35,7 +35,7 @@ const VOICE_SCHEMA = {
 }
 
 const SYSTEM_PROMPT = `You are an expert financial assistant processing voice-to-text transcripts for a ledger app.
-The user is dictating a transaction.
+The user is dictating a transaction(which you'll receive as text).
 Your job is to extract the details into structured JSON.
 
 Rules:
