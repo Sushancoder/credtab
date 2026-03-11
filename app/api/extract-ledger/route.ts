@@ -77,6 +77,7 @@ Rules:
 - Dates may be written in various formats (e.g., "5/3", "5 March", "5 Mar 25") — convert to YYYY-MM-DD. If no year is specified, use the current year.
 - If a date is illegible or absent, set "date" to null.
 - "note" should capture the accompanying note, item name, or reason AND any extra/miscellaneous details visible near the transaction — for example: payment method (cash/UPI/cheque), cheque number, "partial payment", :
+- Contact type: Customer by default(when unspecified)
 - If any data point (name, amount, date, phone, note, type) is illegible, unclear, smudged, or not present in the image, leave that field empty (null) rather than guessing or filling it with an assumed value. Never fabricate data.
 - If multiple images are provided, treat them as pages of the same ledger and consolidate results.`
 

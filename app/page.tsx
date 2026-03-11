@@ -9,6 +9,7 @@ import { getContacts } from '@/lib/contacts'
 import type { Contact } from '@/lib/types'
 import ContactCard from '@/components/ContactCard'
 import AddContactSheet from '@/components/AddContactSheet'
+import VoiceTransaction from '@/components/VoiceTransaction'
 
 export default function HomePage() {
     const router = useRouter()
@@ -200,6 +201,9 @@ export default function HomePage() {
                 defaultType={activeTab}
                 onSuccess={handleContactAdded}
             />
+
+            {/* Voice Transaction UI */}
+            <VoiceTransaction contacts={contacts} />
         </div>
     )
 }
