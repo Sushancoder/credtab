@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { getContacts, bulkAddContacts } from '@/lib/contacts'
 import { bulkAddTransactions } from '@/lib/transactions'
+import { getAvatarColor } from '@/lib/avatar'
 import type { Contact } from '@/lib/types'
 import type { ExtractedLedger, ReviewLedger, ReviewContact, ReviewTransaction } from '@/lib/import-types'
 
@@ -197,9 +198,9 @@ function ContactCard({
             <div className="px-4 pt-4 pb-3 space-y-3">
                 {/* Name row */}
                 <div className="flex items-start gap-2">
-                    {/* Avatar + index */}
-                    <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0 text-xs font-semibold text-muted-foreground mt-0.5">
-                        {index + 1}
+                    {/* Avatar */}
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-semibold text-white mt-0.5 ${getAvatarColor(contact.name || '')}`}>
+                        {(contact.name.trim().charAt(0) || '?').toUpperCase()}
                     </div>
 
                     <div className="flex-1 space-y-2">
@@ -300,6 +301,7 @@ function ContactCard({
 export default function ReviewPage() {
     const router = useRouter()
     const [ledger, setLedger] = useState<ReviewLedger | null>(null)
+    const [existingContacts, setExistingContacts] = useState<Contact[]>([])
     const [loadError, setLoadError] = useState<string | null>(null)
     const [submitting, setSubmitting] = useState(false)
     const [submitError, setSubmitError] = useState<string | null>(null)
@@ -322,6 +324,7 @@ export default function ReviewPage() {
             }
 
             const existing = await getContacts()
+            setExistingContacts(existing)
             setLedger(buildReviewLedger(extracted, existing))
         }
         init()
@@ -333,9 +336,20 @@ export default function ReviewPage() {
         setLedger((prev) => {
             if (!prev) return prev
             return {
-                contacts: prev.contacts.map((c) =>
-                    c.localId === contactLocalId ? { ...c, [field]: value } : c
-                ),
+                contacts: prev.contacts.map((c) => {
+                    if (c.localId !== contactLocalId) return c
+                    
+                    const updated = { ...c, [field]: value }
+                    
+                    // Dynamically check if contact already exists when renaming
+                    if (field === 'name') {
+                        const match = existingContacts.find(ex => ex.name.toLowerCase().trim() === value.toLowerCase().trim())
+                        updated.isNew = !match
+                        updated.existingContactId = match?.id
+                    }
+                    
+                    return updated
+                }),
             }
         })
     }

@@ -22,6 +22,7 @@ export default function VoiceTransaction({ contacts }: VoiceTransactionProps) {
     const [extractedData, setExtractedData] = useState<any>(null)
     const [reviewDirection, setReviewDirection] = useState<'gave' | 'got'>('gave')
     const [reviewAmount, setReviewAmount] = useState<string>('')
+    const [reviewNote, setReviewNote] = useState<string>('')
     const [errorMessage, setErrorMessage] = useState<string | null>(null)
     const transcriptRef = useRef("")
     const recognitionRef = useRef<any>(null)
@@ -103,7 +104,10 @@ export default function VoiceTransaction({ contacts }: VoiceTransactionProps) {
         try {
             const res = await fetch('/api/extract-voice', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-api-secret': process.env.NEXT_PUBLIC_API_SECRET ?? '',
+                },
                 body: JSON.stringify({
                     text,
                     contacts: contacts.map(c => ({ id: c.id, name: c.name, type: c.type }))
@@ -120,6 +124,7 @@ export default function VoiceTransaction({ contacts }: VoiceTransactionProps) {
 
             setReviewDirection(data.direction === 'got' ? 'got' : 'gave')
             setReviewAmount(String(data.amount ?? ''))
+            setReviewNote(data.note ?? '')
             setExtractedData(data)
         } catch (error: any) {
             console.error("Voice processing error:", error)
@@ -156,7 +161,7 @@ export default function VoiceTransaction({ contacts }: VoiceTransactionProps) {
             const { error: txError } = await addTransaction({
                 contact_id: finalContactId,
                 amount: isGave ? amount : -amount,
-                note: extractedData.note || undefined
+                note: reviewNote.trim() || undefined
             })
 
             if (txError) throw new Error(txError.message || 'Failed to add transaction')
@@ -306,11 +311,14 @@ export default function VoiceTransaction({ contacts }: VoiceTransactionProps) {
                                 </div>
                             </div>
 
-                            {extractedData.note && (
-                                <div className="mt-2 text-sm text-muted-foreground bg-muted/50 px-4 py-2 rounded-xl text-balance max-w-[250px] italic">
-                                    "{extractedData.note}"
-                                </div>
-                            )}
+                            <textarea
+                                value={reviewNote}
+                                onChange={e => setReviewNote(e.target.value)}
+                                placeholder="Add a note... (optional)"
+                                rows={2}
+                                maxLength={500}
+                                className="mt-2 w-full text-sm text-muted-foreground bg-muted/50 px-4 py-2 rounded-xl italic resize-none outline-none border border-transparent focus:border-border focus:bg-muted transition-colors placeholder:not-italic placeholder:text-muted-foreground/50"
+                            />
                         </div>
 
                         {/* Bottom Section */}

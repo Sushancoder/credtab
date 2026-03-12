@@ -20,16 +20,38 @@ type Step = 'upload' | 'processing'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function fileToBase64(file: File): Promise<string> {
+// Compress image before Base64 encoding to prevent hitting API payload size limits (e.g. 4MB)
+function compressImageToBase64(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
-        const reader = new FileReader()
-        reader.onload = () => {
-            // result is like "data:image/jpeg;base64,XXXX" — strip the prefix
-            const result = reader.result as string
-            resolve(result.split(',')[1])
+        const url = URL.createObjectURL(file)
+        const img = new window.Image()
+        img.onload = () => {
+            URL.revokeObjectURL(url)
+            const canvas = document.createElement('canvas')
+            const ctx = canvas.getContext('2d')
+            if (!ctx) return reject(new Error('Canvas not supported'))
+            
+            // Scale large images down to a max dimension of 1200px
+            const MAX_DIM = 1200
+            let { width, height } = img
+            if (width > height && width > MAX_DIM) {
+                height = Math.round(height * (MAX_DIM / width))
+                width = MAX_DIM
+            } else if (height > MAX_DIM) {
+                width = Math.round(width * (MAX_DIM / height))
+                height = MAX_DIM
+            }
+            
+            canvas.width = width
+            canvas.height = height
+            ctx.drawImage(img, 0, 0, width, height)
+            
+            // Export as webp for much better compression ratio
+            const dataUrl = canvas.toDataURL('image/webp', 0.8)
+            resolve(dataUrl.split(',')[1])
         }
-        reader.onerror = reject
-        reader.readAsDataURL(file)
+        img.onerror = () => reject(new Error('Failed to load image'))
+        img.src = url
     })
 }
 
@@ -56,8 +78,8 @@ export default function ImportPage() {
             toProcess.map(async (file) => ({
                 file,
                 previewUrl: URL.createObjectURL(file),
-                base64: await fileToBase64(file),
-                mimeType: file.type,
+                base64: await compressImageToBase64(file),
+                mimeType: 'image/webp',
             }))
         )
 
@@ -103,8 +125,8 @@ export default function ImportPage() {
             toProcess.map(async (file) => ({
                 file,
                 previewUrl: URL.createObjectURL(file),
-                base64: await fileToBase64(file),
-                mimeType: file.type,
+                base64: await compressImageToBase64(file),
+                mimeType: 'image/webp',
             }))
         )
 
