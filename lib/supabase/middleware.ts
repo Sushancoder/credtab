@@ -31,10 +31,9 @@ export async function updateSession(request: NextRequest) {
     const { pathname } = request.nextUrl
 
     // If user is NOT logged in and trying to access a protected page → send to /login
-    if (!user && pathname !== "/login") {
+    if (!user && pathname !== "/login" && pathname !== "/api/ping") {
         // API routes → return clean 401 JSON, not a redirect
-        // /api/ping is exempt — used by cron job to keep Supabase alive
-        if (pathname.startsWith("/api/") && pathname !== "/api/ping") {
+        if (pathname.startsWith("/api/")) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
         }
         return NextResponse.redirect(new URL("/login", request.url))
